@@ -1,0 +1,37 @@
+{
+  "expo": {
+    "name": "EZ PM2 GUI",
+    "slug": "ezpm2gui-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#0f172a"
+    },
+    "android": {
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0f172a"
+      },
+      "package": "com.ezpm2gui.mobile",
+      "usesCleartextTraffic": true
+    },
+    "ios": {
+      "bundleIdentifier": "com.ezpm2gui.mobile",
+      "supportsTablet": true
+    },
+    "plugins": [
+      "expo-asset",
+      [
+        "expo-font",
+        {
+          "fonts": [
+            "node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/Ionicons.ttf",
+            "node_modules/@expo/vector-icons/build/vendor/react-native-vector-icons/Fonts/MaterialCommunityIcons.ttf"
+          ]
+        }
+      ]
+    ]
+  }
+}
