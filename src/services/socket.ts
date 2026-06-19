@@ -1,7 +1,8 @@
 // @group BusinessLogic > Socket : Socket.IO client service for real-time updates
 
 import { io, Socket } from 'socket.io-client';
-import { getServerUrl, getAuthToken } from './config';
+import { getServerUrl, getAuthToken, clearAuthToken } from './config';
+import { forceAuthScreen } from '../navigation/navigationRef';
 import type { PM2Process, SystemMetrics } from '../types';
 
 // @group Types : Socket event callback types
@@ -39,6 +40,18 @@ class SocketManager {
 
     this.socket.on('disconnect', () => {
       this.disconnectListeners.forEach((cb) => cb());
+    });
+
+    // Auth rejection: the server refuses the handshake when the token is
+    // missing/expired/revoked. Drop the token and bounce to the login screen
+    // instead of retrying forever with a dead token.
+    this.socket.on('connect_error', (err: Error) => {
+      const message = (err?.message || '').toLowerCase();
+      if (message.includes('auth') || message.includes('unauthorized') || message.includes('token')) {
+        this.disconnect();
+        clearAuthToken().catch(() => {});
+        forceAuthScreen('Your session expired. Please sign in again.');
+      }
     });
 
     this.socket.on('processes', (processes: PM2Process[]) => {

@@ -164,7 +164,7 @@ export interface LogFileInfo {
 // @group Types > Navigation : React Navigation type definitions
 export type RootStackParamList = {
   ServerSetup: undefined;
-  Auth: undefined;
+  Auth: { reason?: string } | undefined;
   Main: undefined;
 };
 

@@ -5,9 +5,10 @@ import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
 import { createStackNavigator } from '@react-navigation/stack';
 import { ActivityIndicator, View } from 'react-native';
 import type { RootStackParamList } from '../types';
-import { getServerUrl, getAuthToken } from '../services/config';
-import { checkAuthStatus } from '../services/api';
+import { getAuthToken, clearAuthToken } from '../services/config';
+import { checkAuthStatus, validateAuthToken } from '../services/api';
 import { socketManager } from '../services/socket';
+import { navigationRef } from './navigationRef';
 import { COLORS } from '../utils/theme';
 import ServerSetupScreen from '../screens/ServerSetupScreen';
 import AuthScreen from '../screens/AuthScreen';
@@ -41,34 +42,30 @@ export default function RootNavigator(): React.JSX.Element {
 
   async function resolveStartScreen(): Promise<void> {
     try {
-      const url = await getServerUrl();
-      if (!url || url === 'http://localhost:3101') {
-        // Check if we can reach default server, otherwise show setup
-        try {
-          const status = await checkAuthStatus();
-          const token = await getAuthToken();
-          if (status.passwordSet && !token) {
-            setStartScreen('auth');
-          } else {
-            await socketManager.connect();
-            setStartScreen('main');
-          }
-        } catch {
-          setStartScreen('setup');
-        }
-        return;
-      }
-
       try {
         const status = await checkAuthStatus();
         const token = await getAuthToken();
-        if (status.passwordSet && !token) {
-          setStartScreen('auth');
-        } else {
-          await socketManager.connect();
-          setStartScreen('main');
+
+        if (status.passwordSet) {
+          if (!token) {
+            setStartScreen('auth');
+            return;
+          }
+          // A token exists — verify it is still valid before trusting it.
+          // Revoked/expired tokens otherwise drop the user into a broken main
+          // screen where every request 401s.
+          const valid = await validateAuthToken();
+          if (!valid) {
+            await clearAuthToken();
+            setStartScreen('auth');
+            return;
+          }
         }
+
+        await socketManager.connect();
+        setStartScreen('main');
       } catch {
+        // Could not reach the configured server: send the user to setup.
         setStartScreen('setup');
       }
     } catch {
@@ -92,7 +89,7 @@ export default function RootNavigator(): React.JSX.Element {
     startScreen === 'auth' ? 'Auth' : startScreen === 'setup' ? 'ServerSetup' : 'Main';
 
   return (
-    <NavigationContainer theme={NavTheme}>
+    <NavigationContainer ref={navigationRef} theme={NavTheme}>
       <Stack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
         <Stack.Screen name="ServerSetup" component={ServerSetupScreen} />
         <Stack.Screen name="Auth" component={AuthScreen} />

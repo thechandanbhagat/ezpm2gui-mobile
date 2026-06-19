@@ -13,7 +13,7 @@ import {
   ScrollView,
 } from 'react-native';
 import { Icon } from '../components/Icon';
-import { useNavigation } from '@react-navigation/native';
+import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import type { StackNavigationProp } from '@react-navigation/stack';
 import { LinearGradient } from 'expo-linear-gradient';
 import type { RootStackParamList } from '../types';
@@ -23,12 +23,15 @@ import { socketManager } from '../services/socket';
 import { COLORS, SPACING, RADIUS, FONT_SIZE } from '../utils/theme';
 
 type Nav = StackNavigationProp<RootStackParamList, 'Auth'>;
+type AuthRoute = RouteProp<RootStackParamList, 'Auth'>;
 
 type AuthMode = 'password' | 'pin';
 
 // @group Authentication > Screens : Auth screen logic
 export default function AuthScreen(): React.JSX.Element {
   const navigation = useNavigation<Nav>();
+  const route = useRoute<AuthRoute>();
+  const sessionReason = route.params?.reason;
   const [mode, setMode] = useState<AuthMode>('password');
   const [hasPin, setHasPin] = useState(false);
   const [password, setPassword] = useState('');
@@ -155,6 +158,13 @@ export default function AuthScreen(): React.JSX.Element {
             </Text>
           </View>
 
+          {sessionReason && (
+            <View style={styles.sessionBanner}>
+              <Icon name="time-outline" size={16} color={COLORS.warning} />
+              <Text style={styles.sessionBannerText}>{sessionReason}</Text>
+            </View>
+          )}
+
           {/* Mode toggle */}
           {hasPin && (
             <View style={styles.modeToggle}>
@@ -261,6 +271,23 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     textAlign: 'center',
     lineHeight: 21,
+  },
+  sessionBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: 'rgba(255,179,0,0.08)',
+    borderColor: 'rgba(255,179,0,0.25)',
+    borderWidth: 1,
+    borderRadius: RADIUS.md,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    marginBottom: SPACING.lg,
+  },
+  sessionBannerText: {
+    flex: 1,
+    fontSize: FONT_SIZE.sm,
+    color: COLORS.warning,
   },
   modeToggle: {
     flexDirection: 'row',
