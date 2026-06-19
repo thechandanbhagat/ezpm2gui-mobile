@@ -44,7 +44,9 @@ function ConnectionCard({
   loading: boolean;
 }): React.JSX.Element {
   const isConnected = connection.connected;
-  const statusColor = isConnected ? COLORS.success : connection.status === 'error' ? COLORS.error : COLORS.textMuted;
+  const status = connection.status ?? (isConnected ? 'connected' : 'disconnected');
+  const statusColor = isConnected ? COLORS.success : status === 'error' ? COLORS.error : COLORS.textMuted;
+  const statusLabel = status.charAt(0).toUpperCase() + status.slice(1);
 
   return (
     <View style={styles.connectionCard}>
@@ -52,7 +54,7 @@ function ConnectionCard({
         <View style={styles.connectionInfo}>
           <View style={styles.connectionNameRow}>
             <View style={[styles.statusIndicator, { backgroundColor: statusColor }]} />
-            <Text style={styles.connectionName}>{connection.name}</Text>
+            <Text style={styles.connectionName}>{connection.name ?? connection.host ?? 'Unknown'}</Text>
           </View>
           <Text style={styles.connectionHost}>
             {connection.host}:{connection.port}
@@ -60,11 +62,11 @@ function ConnectionCard({
         </View>
         <View style={[styles.statusPill, isConnected
           ? { borderColor: 'rgba(0,255,65,0.25)', backgroundColor: 'rgba(0,255,65,0.08)' }
-          : connection.status === 'error'
+          : status === 'error'
             ? { borderColor: 'rgba(255,0,60,0.25)', backgroundColor: 'rgba(255,0,60,0.08)' }
             : { borderColor: 'rgba(0,85,24,0.25)', backgroundColor: 'rgba(0,85,24,0.08)' }]}>
           <Text style={[styles.statusPillText, { color: statusColor }]}>
-            {connection.status.charAt(0).toUpperCase() + connection.status.slice(1)}
+            {statusLabel}
           </Text>
         </View>
       </View>
@@ -193,8 +195,8 @@ function RemoteProcessesModal({
               <Text style={styles.processesSectionTitle}>
                 Processes ({processes.length})
               </Text>
-              {processes.map((p) => (
-                <View key={p.pm_id} style={styles.remoteProcessRow}>
+              {processes.map((p, idx) => (
+                <View key={p.pm_id ?? p.name ?? idx} style={styles.remoteProcessRow}>
                   <View style={styles.remoteProcessLeft}>
                     <Text style={styles.remoteProcessName}>{p.name}</Text>
                     <Text style={styles.remoteProcessSub}>
@@ -275,7 +277,7 @@ export default function RemoteScreen(): React.JSX.Element {
     <SafeAreaView style={styles.safeArea} edges={['bottom']}>
       <FlatList
         data={connections}
-        keyExtractor={(item) => item.id}
+        keyExtractor={(item, index) => item?.id ?? String(index)}
         contentContainerStyle={styles.listContent}
         refreshControl={<RefreshControl refreshing={refreshing} onRefresh={handleRefresh} tintColor={COLORS.primary} colors={[COLORS.primary]} />}
         ListEmptyComponent={
