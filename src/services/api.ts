@@ -1,7 +1,8 @@
 // @group APIEndpoints : Axios-based API service layer for all backend communication
 
 import axios, { AxiosInstance, AxiosRequestConfig } from 'axios';
-import { getServerUrl, getAuthToken } from './config';
+import { getServerUrl, getAuthToken, clearAuthToken } from './config';
+import { forceAuthScreen } from '../navigation/navigationRef';
 import type {
   PM2Process,
   SystemMetrics,
@@ -33,6 +34,19 @@ async function getInstance(): Promise<AxiosInstance> {
   }
 
   _instance = axios.create({ baseURL, headers, timeout: 15000 });
+
+  // Drop a stale/expired token on 401 so the app falls back to the auth screen.
+  _instance.interceptors.response.use(
+    (res) => res,
+    async (error) => {
+      if (error?.response?.status === 401) {
+        await clearAuthToken();
+        forceAuthScreen('Your session expired. Please sign in again.');
+      }
+      return Promise.reject(error);
+    }
+  );
+
   return _instance;
 }
 
@@ -65,6 +79,20 @@ export async function verifyPassword(password: string): Promise<AuthVerifyRespon
 
 export async function verifyPin(pin: string): Promise<AuthVerifyResponse> {
   return post<AuthVerifyResponse>('/api/auth/pin/verify', { pin });
+}
+
+// @group APIEndpoints > Auth : Validate the stored token against a protected route.
+// Returns false only when the server explicitly rejects the token (401);
+// transient/network errors return true so the user is not needlessly logged out.
+export async function validateAuthToken(): Promise<boolean> {
+  try {
+    const client = await getInstance();
+    await client.get('/api/processes');
+    return true;
+  } catch (err: unknown) {
+    const status = (err as { response?: { status?: number } })?.response?.status;
+    return status !== 401;
+  }
 }
 
 // @group APIEndpoints > Processes : PM2 process management endpoints
@@ -138,7 +166,8 @@ export async function deleteCronJob(id: string): Promise<void> {
 
 // @group APIEndpoints > Remote : Remote connection management endpoints
 export async function fetchRemoteConnections(): Promise<RemoteConnection[]> {
-  return get<RemoteConnection[]>('/api/remote/connections');
+  const data = await get<RemoteConnection[]>('/api/remote/connections');
+  return Array.isArray(data) ? data : [];
 }
 
 export async function connectRemote(id: string): Promise<void> {
@@ -150,7 +179,8 @@ export async function disconnectRemote(id: string): Promise<void> {
 }
 
 export async function fetchRemoteProcesses(id: string): Promise<PM2Process[]> {
-  return get<PM2Process[]>(`/api/remote/${id}/processes`);
+  const data = await get<PM2Process[]>(`/api/remote/${id}/processes`);
+  return Array.isArray(data) ? data : [];
 }
 
 export async function fetchRemoteSystemInfo(id: string): Promise<RemoteSystemInfo> {
